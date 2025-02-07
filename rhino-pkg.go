@@ -132,7 +132,8 @@ func install(args []string) {
 	for i, pkg := range packageList {
 		fmt.Printf("[%d] %s (%s)\n", i, pkg.Name, pkg.Source)
 	}
-	fmt.Println("Enter the number of the package to install:")
+	listLength := len(packageList)
+	fmt.Printf("Enter the number of the package to install [0-%d]: ", listLength-1)
 	var selection int
 	_, err := fmt.Scanf("%d", &selection)
 	if err != nil {
@@ -144,22 +145,32 @@ func install(args []string) {
 		os.Exit(1)
 	}
 	pkg := packageList[selection]
-	fmt.Printf("Installing %s...\n", pkg.Name)
-	switch pkg.Source {
-	case "apt":
-		if !nala {
-			runCommand("sudo", "apt", "install", "-y", pkg.Name)
-		} else {
-			runCommand("sudo", "nala", "install", "-y", pkg.Name)
+	fmt.Printf("Would you like to install %s (%s)? [y/N] ", pkg.Name, pkg.Source)
+	var confirmation string
+	_, err = fmt.Scanf("%s", &confirmation)
+	if err != nil {
+		fmt.Println("Error reading input:", err)
+		os.Exit(1)
+	}
+	if confirmation == "y" {
+		switch pkg.Source {
+		case "apt":
+			if !nala {
+				runCommand("sudo", "apt", "install", "-y", pkg.Name)
+			} else {
+				runCommand("sudo", "nala", "install", "-y", pkg.Name)
+			}
+		case "pacstall":
+			runCommand("pacstall", "-I", pkg.Name)
+		case "flatpak":
+			runCommand("flatpak", "install", pkg.Name)
+		case "snap":
+			runCommand("sudo", "snap", "install", pkg.Name)
+		default:
+			fmt.Println("Unknown package source:", pkg.Source)
 		}
-	case "pacstall":
-		runCommand("pacstall", "-I", pkg.Name)
-	case "flatpak":
-		runCommand("flatpak", "install", pkg.Name)
-	case "snap":
-		runCommand("sudo", "snap", "install", pkg.Name)
-	default:
-		fmt.Println("Unknown package source:", pkg.Source)
+	} else {
+		os.Exit(1)
 	}
 }
 

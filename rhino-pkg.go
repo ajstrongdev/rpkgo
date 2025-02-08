@@ -10,6 +10,8 @@ import (
 
 var version = "2.0.0"
 var nala = false;
+var flatpak = false;
+var snap = false;
 
 const (
 	resetColor = "\033[0m"
@@ -18,6 +20,8 @@ const (
 
 func main() {
 	checkNala() // Check if Nala is installed
+    checkFlatpak() // Check if flatpak is installed
+    checkSnap() // Check if snap is installed
 	if len(os.Args) < 2 {
 		fmt.Println("Usage: rhino-pkg <command>")
 		os.Exit(1)
@@ -46,6 +50,22 @@ func checkNala() bool {
 		nala = true
 	}
 	return err == nil
+}
+
+func checkFlatpak() bool {
+    _, err := exec.LookPath("flatpak")
+    if err == nil {
+        flatpak = true
+    }
+    return err == nil
+}
+
+func checkSnap() bool {
+    _, err := exec.LookPath("snap")
+    if err == nil {
+        snap = true
+    }
+    return err == nil
 }
 
 // Check which managers are installed
@@ -177,25 +197,32 @@ func install(args []string) {
 // Update function
 func update(args []string) {
     if len(args) > 0 && args[0] == "-y" { // Promptless
-        fmt.Println("Promptless")
         if !nala {
             runCommand("sudo", "apt", "update", "--allow-releaseinfo-change", "-y")
             runCommand("sudo", "apt", "upgrade", "-y")
         } else {
 			runCommand("sudo", "nala", "upgrade", "-y", "--full", "--no-autoremove", "-o", "Acquire::AllowReleaseInfoChange=\"true\"")
         }
-        runCommand("pacstall", "-U") // Update Pacstall (the program)
-        runCommand("pacstall", "-PUp") // Update pacscripts
+        runCommand("pacstall", "-U")
+        runCommand("pacstall", "-PUp")
+        if flatpak {
+            runCommand("flatpak", "update", "-y")
+        }
     } else { // Prompted
-        fmt.Println("Prompted")
         if !nala {
             runCommand("sudo", "apt", "update", "--allow-releaseinfo-change")
             runCommand("sudo", "apt", "upgrade")
         } else {
 			runCommand("sudo", "nala", "upgrade", "--full", "--no-autoremove", "-o", "Acquire::AllowReleaseInfoChange=\"true\"")
         }
-        runCommand("pacstall", "-U") // Update Pacstall (the program)
-        runCommand("pacstall", "-Up") // Update pacscripts
+        runCommand("pacstall", "-U") 
+        runCommand("pacstall", "-Up") 
+        if flatpak {
+            runCommand("flatpak", "update")
+        }
+    }
+    if snap {
+        runCommand("sudo", "snap", "refresh")
     }
 }
 

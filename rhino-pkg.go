@@ -32,7 +32,7 @@ func main() {
 	case "remove":
 		//remove(args)
 	case "update":
-		//update(args)
+		update(args)
 	case "cleanup":
 		//cleanup()
 	default:
@@ -174,6 +174,31 @@ func install(args []string) {
 	}
 }
 
+// Update function
+func update(args []string) {
+    if len(args) > 0 && args[0] == "-y" { // Promptless
+        fmt.Println("Promptless")
+        if !nala {
+            runCommand("sudo", "apt", "update", "--allow-releaseinfo-change", "-y")
+            runCommand("sudo", "apt", "upgrade", "-y")
+        } else {
+			runCommand("sudo", "nala", "upgrade", "-y", "--full", "--no-autoremove", "-o", "Acquire::AllowReleaseInfoChange=\"true\"")
+        }
+        runCommand("pacstall", "-U") // Update Pacstall (the program)
+        runCommand("pacstall", "-PUp") // Update pacscripts
+    } else { // Prompted
+        fmt.Println("Prompted")
+        if !nala {
+            runCommand("sudo", "apt", "update", "--allow-releaseinfo-change")
+            runCommand("sudo", "apt", "upgrade")
+        } else {
+			runCommand("sudo", "nala", "upgrade", "--full", "--no-autoremove", "-o", "Acquire::AllowReleaseInfoChange=\"true\"")
+        }
+        runCommand("pacstall", "-U") // Update Pacstall (the program)
+        runCommand("pacstall", "-Up") // Update pacscripts
+    }
+}
+
 func captureCommandOutput(name string, args ...string) string {
 	cmd := exec.Command(name, args...)
 	output, err := cmd.Output()
@@ -188,6 +213,7 @@ func runCommand(name string, args ...string) {
 	cmd := exec.Command(name, args...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
+    cmd.Stdin = os.Stdin
 	err := cmd.Run()
 	if err != nil {
 		fmt.Printf("Error running %s: %v\n", name, err)

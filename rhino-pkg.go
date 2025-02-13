@@ -18,10 +18,21 @@ const (
 	defaultColor = "\033[39m"
 )
 
+type Package struct {
+	Name string
+	Source string
+}
+
 func main() {
-	checkNala() // Check if Nala is installed
-    checkFlatpak() // Check if flatpak is installed
-    checkSnap() // Check if snap is installed
+	if checkManagers("nala") {
+		nala = true
+	}
+	if checkManagers("flatpak") {
+		flatpak = true
+	}
+	if checkManagers("snap") {
+		snap = true
+	}
 	if len(os.Args) < 2 {
 		fmt.Println("Usage: rhino-pkg <command>")
 		os.Exit(1)
@@ -44,30 +55,6 @@ func main() {
 	}
 }
 
-func checkNala() bool {
-	_, err := exec.LookPath("nala")
-	if err == nil {
-		nala = true
-	}
-	return err == nil
-}
-
-func checkFlatpak() bool {
-    _, err := exec.LookPath("flatpak")
-    if err == nil {
-        flatpak = true
-    }
-    return err == nil
-}
-
-func checkSnap() bool {
-    _, err := exec.LookPath("snap")
-    if err == nil {
-        snap = true
-    }
-    return err == nil
-}
-
 // Check which managers are installed
 func checkManagers(cmd string) bool {
 	_, err := exec.LookPath(cmd)
@@ -80,28 +67,21 @@ func stripAnsi(s string) string {
 	return re.ReplaceAllString(s, "")
 }
 
-func search(args []string) {
-	query := strings.Join(args, " ")
+func queryPkgs(query string) []Package {
 	fmt.Printf("Searching for packages matching '%s'...\n", query)
-	type Package struct {
-		Name   string
-		Source string
-	}
-	var packageList []Package
 	searchCommands := map[string][]string{
 		"apt":      {"apt-cache", "search", query},
 		"pacstall": {"pacstall", "-S", query},
 		"flatpak":  {"flatpak", "search", query},
 		"snap":     {"snap", "find", query},
 	}
-	// Check which package managers are installed on your system
 	availableManagers := make(map[string][]string)
 	for source, cmd := range searchCommands {
 		if checkManagers(cmd[0]) {
 			availableManagers[source] = cmd
 		}
 	}
-	// Query package managers
+	var packageList []Package
 	for source, cmd := range availableManagers {
 		output := captureCommandOutput(cmd[0], cmd[1:]...)
 		for _, line := range strings.Split(output, "\n") {
@@ -112,6 +92,12 @@ func search(args []string) {
 			}
 		}
 	}
+	return packageList
+}
+
+func search(args []string) {
+	query := strings.Join(args, " ")
+	packageList := queryPkgs(query)
 	for i, pkg := range packageList {
 		fmt.Printf("[%d] %s (%s)\n", i, pkg.Name, pkg.Source)
 	}
@@ -119,36 +105,7 @@ func search(args []string) {
 
 func install(args []string) {
 	query := strings.Join(args, " ")
-	fmt.Printf("Searching for packages matching '%s'...\n", query)
-	type Package struct {
-		Name   string
-		Source string
-	}
-	var packageList []Package
-	searchCommands := map[string][]string{
-		"apt":      {"apt-cache", "search", query},
-		"pacstall": {"pacstall", "-S", query},
-		"flatpak":  {"flatpak", "search", query},
-		"snap":     {"snap", "find", query},
-	}
-	// Check which package managers are installed on your system
-	availableManagers := make(map[string][]string)
-	for source, cmd := range searchCommands {
-		if checkManagers(cmd[0]) {
-			availableManagers[source] = cmd
-		}
-	}
-	// Query package managers
-	for source, cmd := range availableManagers {
-		output := captureCommandOutput(cmd[0], cmd[1:]...)
-		for _, line := range strings.Split(output, "\n") {
-			cleanLine := stripAnsi(line)
-			fields := strings.Fields(cleanLine)
-			if len(fields) > 0 {
-				packageList = append(packageList, Package{fields[0], source})
-			}
-		}
-	}
+	packageList := queryPkgs(query)
 	for i, pkg := range packageList {
 		fmt.Printf("[%d] %s (%s)\n", i, pkg.Name, pkg.Source)
 	}

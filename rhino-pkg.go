@@ -88,7 +88,12 @@ func queryPkgs(query string) []Package {
 		if source == "flatpak" && strings.Contains(output, "No matches found") {
 			continue // Skip over
 		}
-		for _, line := range strings.Split(output, "\n") {
+		lines := strings.Split(output, "\n")
+		// Skip first line of snap output (column headers)
+		if source == "snap" && len(lines) > 0 {
+			lines = lines[1:] // Remove first line
+		}
+		for _, line := range lines {
 			cleanLine := stripAnsi(line)
 			if strings.TrimSpace(cleanLine) == "" {
 				continue

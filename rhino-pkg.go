@@ -84,8 +84,15 @@ func queryPkgs(query string) []Package {
 	var packageList []Package
 	for source, cmd := range availableManagers {
 		output := captureCommandOutput(cmd[0], cmd[1:]...)
+		// Handle flatpak edge-case
+		if source == "flatpak" && strings.Contains(output, "No matches found") {
+			continue // Skip over
+		}
 		for _, line := range strings.Split(output, "\n") {
 			cleanLine := stripAnsi(line)
+			if strings.TrimSpace(cleanLine) == "" {
+				continue
+			}
 			fields := strings.Fields(cleanLine)
 			if len(fields) > 0 {
 				packageList = append(packageList, Package{fields[0], source})
@@ -190,7 +197,8 @@ func captureCommandOutput(name string, args ...string) string {
 		fmt.Printf("Error running %s: %v\n", name, err)
 		return ""
 	}
-	return string(output)
+	result := strings.TrimSpace(string(output))
+	return result
 }
 
 func runCommand(name string, args ...string) {
